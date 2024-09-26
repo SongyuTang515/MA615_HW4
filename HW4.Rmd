@@ -1,0 +1,84 @@
+---
+title: "HW4"
+author: "Songyu Tang"
+date:  "Fall 2024"
+output: 
+  pdf_document:
+      latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+*(b)*
+```{r}
+library(tidyverse)
+library(naniar)
+buoy_data <- read.csv("buoy_data_1985_2023.csv")
+buoy_data <- buoy_data %>%
+  mutate(WDIR = ifelse(WDIR == 999, NA, WDIR))
+#No, it is not appropriate to convert missing/null data to NA. In this data, if 999 represents an outlier or extreme measurement (not missing data), it should be handled differently. Converting to NA could lose meaningful information.
+vis_miss(buoy_data,warn_large_data = FALSE)
+```
+
+*(c)*
+```{r}
+#I think plot ATMP and WTMP may be a good choice to show the effect of climate change.
+library(tidyverse)
+buoy_data <- read.csv("buoy_data_1985_2023.csv")
+buoy_data <- buoy_data %>%
+  mutate(Year = year(Date))
+climate_summary <- buoy_data %>%
+  mutate(ATMP = ifelse(ATMP == 999, NA, ATMP)) %>%
+  mutate(WTMP = ifelse(WTMP == 999, NA, WTMP)) %>%
+  group_by(Year) %>%
+  summarize(
+    avg_ATMP = mean(ATMP, na.rm = TRUE),
+    avg_WTMP = mean(WTMP, na.rm = TRUE)
+  )
+ggplot(climate_summary, aes(x = Year, y = avg_ATMP)) +
+  geom_line(col = "red") + 
+  geom_smooth(method = "lm", se = FALSE, col = "blue") +
+  theme_minimal()
+ggplot(climate_summary, aes(x = Year, y = avg_WTMP)) +
+  geom_line(col = "red") + 
+  geom_smooth(method = "lm", se = FALSE, col = "blue") +
+  theme_minimal()
+#From the plot, it seems that both ATMP and WTMP have positive slopes in linear regression. It can conclude that the climate becomes warmer and warmer recent year.
+```
+
+*(d)*
+```{r}
+library(tidyverse)
+rainfall <- read.csv("Rainfall.csv")
+rainfall <- rainfall %>%
+  mutate(DATE = ymd_hm(DATE))
+rainfall_cleaned <- rainfall %>%
+  select(DATE, HPCP)
+summary(rainfall_cleaned$HPCP)
+#plot the histogram of the count of HPCP
+ggplot(rainfall_cleaned, aes(x = HPCP)) +
+  geom_histogram(binwidth = 0.05, fill = 'blue', color = 'black') +
+  theme_minimal()
+rainfall_month <- rainfall_cleaned %>%
+  mutate(Month = floor_date(DATE,"month")) %>%
+  group_by(Month) %>%
+  summarise(total = sum(HPCP, na.rm = TRUE))
+#plot the change in the HPCP corresponding to the month
+ggplot(rainfall_month, aes(x = Month, y = total)) +
+  geom_line(color = 'blue') +
+  theme_minimal()
+rainfall_month_average <- rainfall_cleaned %>%
+  mutate(Month = month(DATE, label = TRUE)) %>%
+  group_by(Month) %>%
+  summarise(average = mean(HPCP, na.rm = TRUE))
+#plot the total HPCP in different month
+ggplot(rainfall_month_average, aes(x = Month, y = average)) +
+  geom_bar(stat = 'identity', fill = 'blue', color = 'black') +
+  theme_minimal()
+#assume the HPCP has relationship with date, so make a simple regression about date and HPCP
+rainfall_model <- lm(HPCP ~ as.numeric(DATE), data = rainfall_cleaned)
+summary(rainfall_model)
+```
+
